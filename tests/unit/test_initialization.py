@@ -6,10 +6,12 @@ environment variables work correctly for initializing the Langfuse client.
 
 import os
 
+import httpx
 import pytest
 
 from langfuse import Langfuse
 from langfuse._client.resource_manager import LangfuseResourceManager
+from langfuse._client.sealangfuse_credentials import SealangfuseCredentials
 
 
 class TestClientInitialization:
@@ -24,6 +26,10 @@ class TestClientInitialization:
             "LANGFUSE_HOST": os.environ.get("LANGFUSE_HOST"),
             "LANGFUSE_PUBLIC_KEY": os.environ.get("LANGFUSE_PUBLIC_KEY"),
             "LANGFUSE_SECRET_KEY": os.environ.get("LANGFUSE_SECRET_KEY"),
+            "SEALANGFUSE_API_KEY": os.environ.get("SEALANGFUSE_API_KEY"),
+            "SEALANGFUSE_CREDENTIALS_URL": os.environ.get(
+                "SEALANGFUSE_CREDENTIALS_URL"
+            ),
         }
 
         # Remove LANGFUSE_BASE_URL and LANGFUSE_HOST for the test
@@ -44,6 +50,8 @@ class TestClientInitialization:
             "LANGFUSE_HOST",
             "LANGFUSE_PUBLIC_KEY",
             "LANGFUSE_SECRET_KEY",
+            "SEALANGFUSE_API_KEY",
+            "SEALANGFUSE_CREDENTIALS_URL",
         ]:
             if key in os.environ:
                 del os.environ[key]
@@ -297,3 +305,118 @@ class TestClientInitialization:
             secret_key="test_sk",
         )
         assert client2._base_url == "http://insecure.com"
+
+    def test_sealangfuse_api_key_resolves_credentials(
+        self, cleanup_env_vars, monkeypatch
+    ):
+        """Test that SEALANGFUSE_API_KEY resolves Langfuse credentials."""
+        os.environ["SEALANGFUSE_API_KEY"] = "sa-test-key"
+
+        def resolve_credentials(**kwargs):
+            assert kwargs["api_key"] == "sa-test-key"
+            return SealangfuseCredentials(
+                public_key="pk-resolved",
+                secret_key="sk-resolved",
+                base_url="https://resolved.example.com",
+            )
+
+        monkeypatch.setattr(
+            "langfuse._client.client.resolve_sealangfuse_credentials",
+            resolve_credentials,
+        )
+
+        client = Langfuse()
+
+        assert client._base_url == "https://resolved.example.com"
+        assert client.api._client_wrapper._base_url == "https://resolved.example.com"
+
+    def test_sealangfuse_api_key_parameter_resolves_credentials(
+        self, cleanup_env_vars, monkeypatch
+    ):
+        """Test that the api_key parameter resolves Langfuse credentials."""
+        httpx_client = httpx.Client()
+
+        def resolve_credentials(**kwargs):
+            assert kwargs["api_key"] == "sa-param-key"
+            assert kwargs["httpx_client"] is httpx_client
+            return SealangfuseCredentials(
+                public_key="pk-resolved-param",
+                secret_key="sk-resolved-param",
+                base_url="https://resolved-param.example.com",
+            )
+
+        monkeypatch.setattr(
+            "langfuse._client.client.resolve_sealangfuse_credentials",
+            resolve_credentials,
+        )
+
+        client = Langfuse(api_key="sa-param-key", httpx_client=httpx_client)
+
+        assert client._base_url == "https://resolved-param.example.com"
+        assert (
+            client.api._client_wrapper._base_url == "https://resolved-param.example.com"
+        )
+
+    def test_explicit_credentials_skip_sealangfuse_resolution(
+        self, cleanup_env_vars, monkeypatch
+    ):
+        """Test that explicit Langfuse credentials take precedence over api_key."""
+
+        def resolve_credentials(**kwargs):
+            raise AssertionError("Sealangfuse credentials should not be resolved")
+
+        monkeypatch.setattr(
+            "langfuse._client.client.resolve_sealangfuse_credentials",
+            resolve_credentials,
+        )
+
+        client = Langfuse(
+            public_key="pk-explicit",
+            secret_key="sk-explicit",
+            api_key="sa-unused",
+            base_url="https://explicit.example.com",
+        )
+
+        assert client._base_url == "https://explicit.example.com"
+        assert client.api._client_wrapper._username == "pk-explicit"
+
+    def test_sealangfuse_resolution_keeps_explicit_base_url(
+        self, cleanup_env_vars, monkeypatch
+    ):
+        """Test that explicit base_url is not overwritten by resolved credentials."""
+
+        def resolve_credentials(**kwargs):
+            return SealangfuseCredentials(
+                public_key="pk-resolved-url",
+                secret_key="sk-resolved-url",
+                base_url="https://resolved-url.example.com",
+            )
+
+        monkeypatch.setattr(
+            "langfuse._client.client.resolve_sealangfuse_credentials",
+            resolve_credentials,
+        )
+
+        client = Langfuse(
+            api_key="sa-url-key",
+            base_url="https://explicit-url.example.com",
+        )
+
+        assert client._base_url == "https://explicit-url.example.com"
+
+    def test_failed_sealangfuse_resolution_disables_client(
+        self, cleanup_env_vars, monkeypatch
+    ):
+        """Test that failed Sealangfuse credential resolution disables the client."""
+
+        def resolve_credentials(**kwargs):
+            raise RuntimeError("resolver unavailable")
+
+        monkeypatch.setattr(
+            "langfuse._client.client.resolve_sealangfuse_credentials",
+            resolve_credentials,
+        )
+
+        client = Langfuse(api_key="sa-bad-key")
+
+        assert client._resources is None

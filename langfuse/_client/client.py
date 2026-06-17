@@ -63,6 +63,8 @@ from langfuse._client.environment_variables import (
     LANGFUSE_TIMEOUT,
     LANGFUSE_TRACING_ENABLED,
     LANGFUSE_TRACING_ENVIRONMENT,
+    SEALANGFUSE_API_KEY,
+    SEALANGFUSE_CREDENTIALS_URL,
 )
 from langfuse._client.propagation import (
     PropagatedExperimentAttributes,
@@ -71,6 +73,7 @@ from langfuse._client.propagation import (
     _set_langfuse_trace_id_in_baggage,
 )
 from langfuse._client.resource_manager import LangfuseResourceManager
+from langfuse._client.sealangfuse_credentials import resolve_sealangfuse_credentials
 from langfuse._client.span import (
     LangfuseAgent,
     LangfuseChain,
@@ -159,6 +162,7 @@ class Langfuse:
     Parameters:
         public_key (Optional[str]): Your Langfuse public API key. Can also be set via LANGFUSE_PUBLIC_KEY environment variable.
         secret_key (Optional[str]): Your Langfuse secret API key. Can also be set via LANGFUSE_SECRET_KEY environment variable.
+        api_key (Optional[str]): Sealangfuse API key. Can also be set via SEALANGFUSE_API_KEY environment variable. Used only when public_key or secret_key is not provided.
         base_url (Optional[str]): The Langfuse API base URL. Defaults to "https://cloud.langfuse.com". Can also be set via LANGFUSE_BASE_URL environment variable.
         host (Optional[str]): Deprecated. Use base_url instead. The Langfuse API host URL. Defaults to "https://cloud.langfuse.com".
         timeout (Optional[int]): Timeout in seconds for API requests. Defaults to 5 seconds.
@@ -235,6 +239,7 @@ class Langfuse:
         *,
         public_key: Optional[str] = None,
         secret_key: Optional[str] = None,
+        api_key: Optional[str] = None,
         base_url: Optional[str] = None,
         host: Optional[str] = None,
         timeout: Optional[int] = None,
@@ -254,12 +259,6 @@ class Langfuse:
         tracer_provider: Optional[TracerProvider] = None,
         span_exporter: Optional[SpanExporter] = None,
     ):
-        self._base_url = (
-            base_url
-            or os.environ.get(LANGFUSE_BASE_URL)
-            or host
-            or os.environ.get(LANGFUSE_HOST, "https://cloud.langfuse.com")
-        )
         self._environment = environment or cast(
             str, os.environ.get(LANGFUSE_TRACING_ENVIRONMENT)
         )
@@ -276,6 +275,39 @@ class Langfuse:
             )
 
         timeout = timeout or int(os.environ.get(LANGFUSE_TIMEOUT, 5))
+
+        resolved_base_url = (
+            base_url
+            or os.environ.get(LANGFUSE_BASE_URL)
+            or host
+            or os.environ.get(LANGFUSE_HOST)
+        )
+        public_key = public_key or os.environ.get(LANGFUSE_PUBLIC_KEY)
+        secret_key = secret_key or os.environ.get(LANGFUSE_SECRET_KEY)
+
+        if public_key is None or secret_key is None:
+            sealangfuse_api_key = api_key or os.environ.get(SEALANGFUSE_API_KEY)
+
+            if sealangfuse_api_key is not None:
+                try:
+                    credentials = resolve_sealangfuse_credentials(
+                        api_key=sealangfuse_api_key,
+                        credentials_url=os.environ.get(SEALANGFUSE_CREDENTIALS_URL),
+                        timeout=timeout,
+                        httpx_client=httpx_client,
+                    )
+                    public_key = public_key or credentials.public_key
+                    secret_key = secret_key or credentials.secret_key
+                    resolved_base_url = resolved_base_url or credentials.base_url
+                except Exception as error:
+                    langfuse_logger.warning(
+                        "Authentication error: Failed to resolve Sealangfuse API key. Client will be disabled. "
+                        f"Error: {error}"
+                    )
+                    self._otel_tracer = otel_trace_api.NoOpTracer()
+                    return
+
+        self._base_url = resolved_base_url or "https://cloud.langfuse.com"
 
         self._tracing_enabled = (
             tracing_enabled
@@ -295,20 +327,18 @@ class Langfuse:
             )
             langfuse_logger.setLevel(logging.DEBUG)
 
-        public_key = public_key or os.environ.get(LANGFUSE_PUBLIC_KEY)
         if public_key is None:
             langfuse_logger.warning(
                 "Authentication error: Langfuse client initialized without public_key. Client will be disabled. "
-                "Provide a public_key parameter or set LANGFUSE_PUBLIC_KEY environment variable. "
+                "Provide a public_key parameter, set LANGFUSE_PUBLIC_KEY environment variable, or set SEALANGFUSE_API_KEY. "
             )
             self._otel_tracer = otel_trace_api.NoOpTracer()
             return
 
-        secret_key = secret_key or os.environ.get(LANGFUSE_SECRET_KEY)
         if secret_key is None:
             langfuse_logger.warning(
                 "Authentication error: Langfuse client initialized without secret_key. Client will be disabled. "
-                "Provide a secret_key parameter or set LANGFUSE_SECRET_KEY environment variable. "
+                "Provide a secret_key parameter, set LANGFUSE_SECRET_KEY environment variable, or set SEALANGFUSE_API_KEY. "
             )
             self._otel_tracer = otel_trace_api.NoOpTracer()
             return

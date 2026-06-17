@@ -35,6 +35,20 @@ LANGFUSE_SECRET_KEY = "LANGFUSE_SECRET_KEY"
 Secret API key of Langfuse project
 """
 
+SEALANGFUSE_API_KEY = "SEALANGFUSE_API_KEY"
+"""
+.. envvar:: SEALANGFUSE_API_KEY
+
+Sealangfuse API key used to resolve Langfuse project credentials.
+"""
+
+SEALANGFUSE_CREDENTIALS_URL = "SEALANGFUSE_CREDENTIALS_URL"
+"""
+.. envvar:: SEALANGFUSE_CREDENTIALS_URL
+
+Endpoint used to resolve Sealangfuse API keys into Langfuse project credentials.
+"""
+
 LANGFUSE_BASE_URL = "LANGFUSE_BASE_URL"
 """
 .. envvar:: LANGFUSE_BASE_URL
