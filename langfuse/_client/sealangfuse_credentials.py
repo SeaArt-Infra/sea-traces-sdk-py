@@ -12,6 +12,7 @@ DEFAULT_SEALANGFUSE_CREDENTIALS_URL = (
     "https://sealangfuse-web.us-west1.infra.seaart.dev"
     "/api/public/sea-project-api-credentials"
 )
+SEALANGFUSE_CREDENTIALS_PATH = "/api/public/sea-project-api-credentials"
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,11 @@ def clear_sealangfuse_credentials_cache() -> None:
     with _credentials_cache_lock:
         _credentials_cache.clear()
         _credentials_request_locks.clear()
+
+
+def build_sealangfuse_credentials_url(base_url: str) -> str:
+    """Build the credentials resolver endpoint from a Sealangfuse base URL."""
+    return f"{base_url.rstrip('/')}{SEALANGFUSE_CREDENTIALS_PATH}"
 
 
 def resolve_sealangfuse_credentials(

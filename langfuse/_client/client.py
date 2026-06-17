@@ -73,7 +73,10 @@ from langfuse._client.propagation import (
     _set_langfuse_trace_id_in_baggage,
 )
 from langfuse._client.resource_manager import LangfuseResourceManager
-from langfuse._client.sealangfuse_credentials import resolve_sealangfuse_credentials
+from langfuse._client.sealangfuse_credentials import (
+    build_sealangfuse_credentials_url,
+    resolve_sealangfuse_credentials,
+)
 from langfuse._client.span import (
     LangfuseAgent,
     LangfuseChain,
@@ -290,9 +293,14 @@ class Langfuse:
 
             if sealangfuse_api_key is not None:
                 try:
+                    credentials_url = os.environ.get(SEALANGFUSE_CREDENTIALS_URL) or (
+                        build_sealangfuse_credentials_url(resolved_base_url)
+                        if resolved_base_url
+                        else None
+                    )
                     credentials = resolve_sealangfuse_credentials(
                         api_key=sealangfuse_api_key,
-                        credentials_url=os.environ.get(SEALANGFUSE_CREDENTIALS_URL),
+                        credentials_url=credentials_url,
                         timeout=timeout,
                         httpx_client=httpx_client,
                     )

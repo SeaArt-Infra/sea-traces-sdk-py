@@ -404,6 +404,34 @@ class TestClientInitialization:
 
         assert client._base_url == "https://explicit-url.example.com"
 
+    def test_sealangfuse_resolution_uses_base_url_for_credentials_url(
+        self, cleanup_env_vars, monkeypatch
+    ):
+        """Test that base_url determines the default Sealangfuse resolver endpoint."""
+
+        def resolve_credentials(**kwargs):
+            assert (
+                kwargs["credentials_url"]
+                == "https://env.example.com/api/public/sea-project-api-credentials"
+            )
+            return SealangfuseCredentials(
+                public_key="pk-env-url",
+                secret_key="sk-env-url",
+                base_url="https://resolved-env.example.com",
+            )
+
+        monkeypatch.setattr(
+            "langfuse._client.client.resolve_sealangfuse_credentials",
+            resolve_credentials,
+        )
+
+        client = Langfuse(
+            api_key="sa-env-url-key",
+            base_url="https://env.example.com/",
+        )
+
+        assert client._base_url == "https://env.example.com/"
+
     def test_failed_sealangfuse_resolution_disables_client(
         self, cleanup_env_vars, monkeypatch
     ):
