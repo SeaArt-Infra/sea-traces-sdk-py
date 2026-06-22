@@ -42,6 +42,13 @@ SEALANGFUSE_API_KEY = "SEALANGFUSE_API_KEY"
 Sealangfuse API key used to resolve Langfuse project credentials.
 """
 
+SEA_TEAM_KEY = "SEA_TEAM_KEY"
+"""
+.. envvar:: SEA_TEAM_KEY
+
+Sea Traces team key used to resolve Langfuse project credentials.
+"""
+
 SEALANGFUSE_CREDENTIALS_URL = "SEALANGFUSE_CREDENTIALS_URL"
 """
 .. envvar:: SEALANGFUSE_CREDENTIALS_URL
@@ -56,6 +63,13 @@ LANGFUSE_BASE_URL = "LANGFUSE_BASE_URL"
 Base URL of Langfuse API. Can be set via `LANGFUSE_BASE_URL` environment variable.
 
 **Default value:** ``"https://cloud.langfuse.com"``
+"""
+
+SEA_TRACES_BASE_URL = "SEA_TRACES_BASE_URL"
+"""
+.. envvar:: SEA_TRACES_BASE_URL
+
+Base URL of Sea Traces API. Preferred over the legacy LANGFUSE_BASE_URL environment variable.
 """
 
 LANGFUSE_HOST = "LANGFUSE_HOST"

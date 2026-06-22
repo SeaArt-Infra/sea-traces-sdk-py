@@ -83,7 +83,7 @@ def resolve_sealangfuse_credentials(
         except Exception as error:
             message = (
                 "Failed to resolve Sealangfuse API key into Langfuse credentials. "
-                "Check SEALANGFUSE_API_KEY and SEALANGFUSE_CREDENTIALS_URL."
+                "Check SEA_TEAM_KEY, SEA_TRACES_BASE_URL, and SEALANGFUSE_CREDENTIALS_URL."
             )
             raise RuntimeError(message) from error
 

@@ -1,9 +1,9 @@
 [project]
-name = "langfuse"
+name = "sea-traces"
 version = "4.8.1"
-description = "A client library for accessing langfuse"
+description = "A client library for accessing Sea Traces"
 readme = "README.md"
-authors = [{ name = "langfuse", email = "developers@langfuse.com" }]
+authors = [{ name = "Sea Traces", email = "developers@seaart.ai" }]
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10,<4.0"
@@ -50,6 +50,8 @@ exclude-newer = "7 days"
 
 [tool.uv.build-backend]
 module-root = ""
+module-name = ["sea_traces", "langfuse"]
+source-include = ["langfuse/**"]
 
 [tool.pytest.ini_options]
 log_cli = true
@@ -84,6 +86,7 @@ show_column_numbers = true
 
 [[tool.mypy.overrides]]
 module = [
+    "sea_traces.*",
     "langchain.*",
     "openai.*",
     "chromadb.*",
@@ -109,7 +112,7 @@ module = [
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "langfuse.api.*"
+module = ["langfuse.api.*"]
 disable_error_code = ["redundant-cast", "no-untyped-def"]
 
 [tool.ruff]
