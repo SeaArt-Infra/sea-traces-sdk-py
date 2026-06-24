@@ -11,23 +11,27 @@ Key features:
 - Project-scoped span filtering to prevent cross-project data leakage
 """
 
-import base64
+import json
 import os
 import threading
-from typing import Callable, Dict, List, Optional, cast
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional, Sequence, cast
 
+import httpx
 from opentelemetry import context as context_api
 from opentelemetry.context import Context
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import ReadableSpan, Span
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    SpanExporter,
+    SpanExportResult,
+)
 from opentelemetry.trace import format_span_id, format_trace_id
 
 from langfuse._client.attributes import LangfuseOtelSpanAttributes
 from langfuse._client.environment_variables import (
     LANGFUSE_FLUSH_AT,
     LANGFUSE_FLUSH_INTERVAL,
-    LANGFUSE_OTEL_TRACES_EXPORT_PATH,
 )
 from langfuse._client.propagation import (
     _get_langfuse_trace_id_from_baggage,
@@ -35,7 +39,10 @@ from langfuse._client.propagation import (
 )
 from langfuse._client.span_filter import is_default_export_span, is_langfuse_span
 from langfuse._client.utils import span_formatter
+from langfuse._utils import _get_timestamp
+from langfuse._utils.request import LangfuseClient
 from langfuse._version import __version__ as langfuse_version
+from langfuse.api.ingestion.types.observation_type import ObservationType
 from langfuse.logger import langfuse_logger
 
 
@@ -61,6 +68,7 @@ class LangfuseSpanProcessor(BatchSpanProcessor):
         *,
         public_key: str,
         secret_key: str,
+        project_id: str,
         base_url: str,
         timeout: Optional[int] = None,
         flush_at: Optional[int] = None,
@@ -92,34 +100,16 @@ class LangfuseSpanProcessor(BatchSpanProcessor):
         )
 
         if span_exporter is None:
-            basic_auth_header = "Basic " + base64.b64encode(
-                f"{public_key}:{secret_key}".encode("utf-8")
-            ).decode("ascii")
-
-            # Prepare default headers
-            default_headers = {
-                "Authorization": basic_auth_header,
-                "x-langfuse-sdk-name": "python",
-                "x-langfuse-sdk-version": langfuse_version,
-                "x-langfuse-public-key": public_key,
-            }
-
-            # Merge additional headers if provided
-            headers = {**default_headers, **(additional_headers or {})}
-
-            traces_export_path = os.environ.get(LANGFUSE_OTEL_TRACES_EXPORT_PATH, None)
-
-            endpoint = (
-                f"{base_url}/{traces_export_path}"
-                if traces_export_path
-                else f"{base_url}/api/public/otel/v1/traces"
+            ingestion_client = LangfuseClient(
+                public_key=public_key,
+                secret_key=secret_key,
+                project_id=project_id,
+                base_url=base_url,
+                version=langfuse_version,
+                timeout=timeout or 20,
+                session=httpx.Client(timeout=timeout, headers=additional_headers or {}),
             )
-
-            span_exporter = OTLPSpanExporter(
-                endpoint=endpoint,
-                headers=headers,
-                timeout=timeout,
-            )
+            span_exporter = SeaTracesNoAuthSpanExporter(client=ingestion_client)
 
         super().__init__(
             span_exporter=span_exporter,
@@ -281,3 +271,244 @@ class LangfuseSpanProcessor(BatchSpanProcessor):
             return None
 
         return span.instrumentation_scope.name
+
+
+class SeaTracesNoAuthSpanExporter(SpanExporter):
+    """Export OpenTelemetry spans through the Sea Traces noauth ingestion endpoint."""
+
+    def __init__(self, *, client: LangfuseClient):
+        self._client = client
+
+    def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
+        events = []
+
+        for span in spans:
+            events.extend(_span_to_ingestion_events(span))
+
+        if not events:
+            return SpanExportResult.SUCCESS
+
+        try:
+            self._client.batch_post(batch=events)
+            return SpanExportResult.SUCCESS
+        except Exception as error:
+            langfuse_logger.warning(
+                "Trace export error: Failed to upload spans via Sea Traces noauth ingestion. "
+                f"Error: {error}"
+            )
+            return SpanExportResult.FAILURE
+
+    def shutdown(self) -> None:
+        self._client.close()
+
+
+def _span_to_ingestion_events(span: ReadableSpan) -> List[Dict[str, Any]]:
+    trace_id = format_trace_id(span.context.trace_id)
+    observation_id = format_span_id(span.context.span_id)
+    parent_observation_id = (
+        format_span_id(span.parent.span_id) if span.parent is not None else None
+    )
+    attributes = dict(span.attributes or {})
+    timestamp = _serialize_datetime_ns(span.start_time) or _get_timestamp()
+    observation_type = str(
+        attributes.get(LangfuseOtelSpanAttributes.OBSERVATION_TYPE) or "span"
+    ).lower()
+    events: List[Dict[str, Any]] = []
+
+    trace_body = _build_trace_body(span=span, attributes=attributes, trace_id=trace_id)
+    if trace_body:
+        events.append(
+            {
+                "id": f"{trace_id}-{observation_id}-trace",
+                "type": "trace-create",
+                "timestamp": timestamp,
+                "body": trace_body,
+            }
+        )
+
+    body = _build_observation_body(
+        span=span,
+        attributes=attributes,
+        trace_id=trace_id,
+        observation_id=observation_id,
+        parent_observation_id=parent_observation_id,
+        observation_type=observation_type,
+    )
+    event_type = (
+        "generation-create"
+        if observation_type == "generation"
+        else "event-create"
+        if observation_type == "event"
+        else "span-create"
+    )
+    events.append(
+        {
+            "id": f"{trace_id}-{observation_id}-observation",
+            "type": event_type,
+            "timestamp": timestamp,
+            "body": body,
+        }
+    )
+
+    return events
+
+
+def _build_trace_body(
+    *,
+    span: ReadableSpan,
+    attributes: Dict[str, Any],
+    trace_id: str,
+) -> Dict[str, Any]:
+    is_app_root = attributes.get(LangfuseOtelSpanAttributes.IS_APP_ROOT) is True
+    trace_attribute_keys = {
+        LangfuseOtelSpanAttributes.TRACE_NAME,
+        LangfuseOtelSpanAttributes.TRACE_USER_ID,
+        LangfuseOtelSpanAttributes.TRACE_SESSION_ID,
+        LangfuseOtelSpanAttributes.TRACE_INPUT,
+        LangfuseOtelSpanAttributes.TRACE_OUTPUT,
+        LangfuseOtelSpanAttributes.TRACE_PUBLIC,
+        LangfuseOtelSpanAttributes.TRACE_TAGS,
+        LangfuseOtelSpanAttributes.RELEASE,
+    }
+    has_trace_metadata = any(
+        existing_key.startswith(f"{LangfuseOtelSpanAttributes.TRACE_METADATA}.")
+        for existing_key in attributes
+    )
+    has_trace_attributes = (
+        is_app_root
+        or has_trace_metadata
+        or any(key in attributes for key in trace_attribute_keys)
+    )
+
+    if not has_trace_attributes:
+        return {}
+
+    body: Dict[str, Any] = {
+        "id": trace_id,
+        "timestamp": _serialize_datetime_ns(span.start_time),
+        "name": attributes.get(LangfuseOtelSpanAttributes.TRACE_NAME)
+        or (span.name if is_app_root else None),
+        "userId": attributes.get(LangfuseOtelSpanAttributes.TRACE_USER_ID),
+        "sessionId": attributes.get(LangfuseOtelSpanAttributes.TRACE_SESSION_ID),
+        "release": attributes.get(LangfuseOtelSpanAttributes.RELEASE),
+        "version": attributes.get(LangfuseOtelSpanAttributes.VERSION),
+        "environment": attributes.get(LangfuseOtelSpanAttributes.ENVIRONMENT),
+        "input": _json_attribute(
+            attributes.get(LangfuseOtelSpanAttributes.TRACE_INPUT)
+        ),
+        "output": _json_attribute(
+            attributes.get(LangfuseOtelSpanAttributes.TRACE_OUTPUT)
+        ),
+        "public": attributes.get(LangfuseOtelSpanAttributes.TRACE_PUBLIC),
+        "tags": _json_attribute(attributes.get(LangfuseOtelSpanAttributes.TRACE_TAGS)),
+        "metadata": _collect_prefixed_attributes(
+            attributes, f"{LangfuseOtelSpanAttributes.TRACE_METADATA}."
+        ),
+    }
+
+    return {key: value for key, value in body.items() if value is not None}
+
+
+def _build_observation_body(
+    *,
+    span: ReadableSpan,
+    attributes: Dict[str, Any],
+    trace_id: str,
+    observation_id: str,
+    parent_observation_id: Optional[str],
+    observation_type: str,
+) -> Dict[str, Any]:
+    body: Dict[str, Any] = {
+        "id": observation_id,
+        "traceId": trace_id,
+        "name": span.name,
+        "startTime": _serialize_datetime_ns(span.start_time),
+        "endTime": _serialize_datetime_ns(span.end_time),
+        "parentObservationId": parent_observation_id,
+        "environment": attributes.get(LangfuseOtelSpanAttributes.ENVIRONMENT),
+        "input": _json_attribute(
+            attributes.get(LangfuseOtelSpanAttributes.OBSERVATION_INPUT)
+        ),
+        "output": _json_attribute(
+            attributes.get(LangfuseOtelSpanAttributes.OBSERVATION_OUTPUT)
+        ),
+        "level": attributes.get(LangfuseOtelSpanAttributes.OBSERVATION_LEVEL),
+        "statusMessage": attributes.get(
+            LangfuseOtelSpanAttributes.OBSERVATION_STATUS_MESSAGE
+        ),
+        "version": attributes.get(LangfuseOtelSpanAttributes.VERSION),
+        "metadata": _collect_prefixed_attributes(
+            attributes, f"{LangfuseOtelSpanAttributes.OBSERVATION_METADATA}."
+        ),
+    }
+
+    if observation_type not in {"generation", "event"}:
+        body["type"] = _observation_type_value(observation_type)
+
+    if observation_type == "generation":
+        body.update(
+            {
+                "completionStartTime": _json_attribute(
+                    attributes.get(
+                        LangfuseOtelSpanAttributes.OBSERVATION_COMPLETION_START_TIME
+                    )
+                ),
+                "model": attributes.get(LangfuseOtelSpanAttributes.OBSERVATION_MODEL),
+                "modelParameters": _json_attribute(
+                    attributes.get(
+                        LangfuseOtelSpanAttributes.OBSERVATION_MODEL_PARAMETERS
+                    )
+                ),
+                "usageDetails": _json_attribute(
+                    attributes.get(LangfuseOtelSpanAttributes.OBSERVATION_USAGE_DETAILS)
+                ),
+                "costDetails": _json_attribute(
+                    attributes.get(LangfuseOtelSpanAttributes.OBSERVATION_COST_DETAILS)
+                ),
+                "promptName": attributes.get(
+                    LangfuseOtelSpanAttributes.OBSERVATION_PROMPT_NAME
+                ),
+                "promptVersion": attributes.get(
+                    LangfuseOtelSpanAttributes.OBSERVATION_PROMPT_VERSION
+                ),
+            }
+        )
+
+    return {key: value for key, value in body.items() if value is not None}
+
+
+def _observation_type_value(observation_type: str) -> str:
+    normalized = observation_type.upper()
+    allowed_values = {member.value for member in ObservationType}
+
+    return normalized if normalized in allowed_values else ObservationType.SPAN.value
+
+
+def _collect_prefixed_attributes(
+    attributes: Dict[str, Any],
+    prefix: str,
+) -> Optional[Dict[str, Any]]:
+    collected = {
+        key.removeprefix(prefix): _json_attribute(value)
+        for key, value in attributes.items()
+        if key.startswith(prefix)
+    }
+
+    return collected or None
+
+
+def _json_attribute(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value
+
+
+def _serialize_datetime_ns(timestamp_ns: Optional[int]) -> Optional[str]:
+    if timestamp_ns is None:
+        return None
+
+    return datetime.fromtimestamp(timestamp_ns / 1_000_000_000).astimezone().isoformat()

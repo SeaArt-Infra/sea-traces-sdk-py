@@ -84,6 +84,7 @@ class LangfuseResourceManager:
         *,
         public_key: str,
         secret_key: str,
+        project_id: Optional[str] = None,
         base_url: str,
         environment: Optional[str] = None,
         release: Optional[str] = None,
@@ -101,11 +102,13 @@ class LangfuseResourceManager:
         tracer_provider: Optional[TracerProvider] = None,
         span_exporter: Optional[SpanExporter] = None,
     ) -> "LangfuseResourceManager":
-        if public_key in cls._instances:
-            return cls._instances[public_key]
+        instance_key = public_key
+
+        if instance_key in cls._instances:
+            return cls._instances[instance_key]
 
         with cls._lock:
-            if public_key not in cls._instances:
+            if instance_key not in cls._instances:
                 instance = super(LangfuseResourceManager, cls).__new__(cls)
 
                 # Initialize tracer (will be noop until init instance)
@@ -118,6 +121,7 @@ class LangfuseResourceManager:
                 instance._initialize_instance(
                     public_key=public_key,
                     secret_key=secret_key,
+                    project_id=project_id,
                     base_url=base_url,
                     timeout=timeout,
                     environment=environment,
@@ -138,15 +142,16 @@ class LangfuseResourceManager:
                     span_exporter=span_exporter,
                 )
 
-                cls._instances[public_key] = instance
+                cls._instances[instance_key] = instance
 
-            return cls._instances[public_key]
+            return cls._instances[instance_key]
 
     def _initialize_instance(
         self,
         *,
         public_key: str,
         secret_key: str,
+        project_id: Optional[str] = None,
         base_url: str,
         environment: Optional[str] = None,
         release: Optional[str] = None,
@@ -166,6 +171,7 @@ class LangfuseResourceManager:
     ) -> None:
         self.public_key = public_key
         self.secret_key = secret_key
+        self.project_id = project_id or public_key
         self.tracing_enabled = tracing_enabled
         self.base_url = base_url
         self.mask = mask
@@ -194,6 +200,7 @@ class LangfuseResourceManager:
             langfuse_processor = LangfuseSpanProcessor(
                 public_key=self.public_key,
                 secret_key=secret_key,
+                project_id=self.project_id,
                 base_url=base_url,
                 timeout=timeout,
                 flush_at=flush_at,
@@ -246,6 +253,7 @@ class LangfuseResourceManager:
         score_ingestion_client = LangfuseClient(
             public_key=self.public_key,
             secret_key=secret_key,
+            project_id=self.project_id,
             base_url=base_url,
             version=langfuse_version,
             timeout=timeout or 20,

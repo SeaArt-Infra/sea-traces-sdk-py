@@ -34,9 +34,8 @@ def test_get_client_preserves_all_settings(monkeypatch):
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-comprehensive-default")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-comprehensive-default")
     monkeypatch.setenv("LANGFUSE_BASE_URL", "http://localhost:3000")
-    monkeypatch.setenv("SEA_TRACES_API_KEY", "test-team-key")
-    monkeypatch.setenv("SEA_TRACES_BASE_URL", "http://test-host")
-    monkeypatch.setenv("SEA_TRACES_PROJECT_ID", "test-project-id")
+    monkeypatch.setenv("SEATRACES_PROJECT_ID", "test-project-id")
+    monkeypatch.setenv("SEATRACES_BASE_URL", "http://test-host")
 
     def should_export(span):
         return span.name != "drop"
@@ -79,9 +78,8 @@ def test_get_client_preserves_all_settings(monkeypatch):
 
 def test_get_client_multiple_clients_preserve_different_settings(monkeypatch):
     """Test that get_client() preserves different settings for multiple clients."""
-    monkeypatch.setenv("SEA_TRACES_API_KEY", "test-team-key")
-    monkeypatch.setenv("SEA_TRACES_BASE_URL", "http://test-host")
-    monkeypatch.setenv("SEA_TRACES_PROJECT_ID", "test-project-id")
+    monkeypatch.setenv("SEATRACES_PROJECT_ID", "test-project-id")
+    monkeypatch.setenv("SEATRACES_BASE_URL", "http://test-host")
 
     def should_export_a(span):
         return span.name.startswith("a")

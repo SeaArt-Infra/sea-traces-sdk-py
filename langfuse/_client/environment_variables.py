@@ -35,18 +35,25 @@ LANGFUSE_SECRET_KEY = "LANGFUSE_SECRET_KEY"
 Secret API key of Langfuse project
 """
 
+SEATRACES_PROJECT_ID = "SEATRACES_PROJECT_ID"
+"""
+.. envvar:: SEATRACES_PROJECT_ID
+
+Sea Traces project id for direct noauth ingestion.
+"""
+
 SEATRACES_PUBLIC_KEY = "SEATRACES_PUBLIC_KEY"
 """
 .. envvar:: SEATRACES_PUBLIC_KEY
 
-Public API key for direct Sea Traces upload
+Deprecated. Public API key for direct Sea Traces upload.
 """
 
 SEATRACES_SECRET_KEY = "SEATRACES_SECRET_KEY"
 """
 .. envvar:: SEATRACES_SECRET_KEY
 
-Secret API key for direct Sea Traces upload
+Deprecated. Secret API key for direct Sea Traces upload.
 """
 
 SEATRACES_BASE_URL = "SEATRACES_BASE_URL"

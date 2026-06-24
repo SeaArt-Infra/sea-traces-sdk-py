@@ -1,7 +1,6 @@
 """@private"""
 
 import json
-from base64 import b64encode
 from typing import Any, List, Union
 
 import httpx
@@ -13,6 +12,7 @@ from langfuse.logger import langfuse_logger as logger
 class LangfuseClient:
     _public_key: str
     _secret_key: str
+    _project_id: str
     _base_url: str
     _version: str
     _timeout: int
@@ -22,6 +22,7 @@ class LangfuseClient:
         self,
         public_key: str,
         secret_key: str,
+        project_id: str,
         base_url: str,
         version: str,
         timeout: int,
@@ -29,6 +30,7 @@ class LangfuseClient:
     ):
         self._public_key = public_key
         self._secret_key = secret_key
+        self._project_id = project_id
         self._base_url = base_url
         self._version = version
         self._timeout = timeout
@@ -36,10 +38,6 @@ class LangfuseClient:
 
     def generate_headers(self) -> dict:
         return {
-            "Authorization": "Basic "
-            + b64encode(
-                f"{self._public_key}:{self._secret_key}".encode("utf-8")
-            ).decode("ascii"),
             "Content-Type": "application/json",
             "x-langfuse-sdk-name": "python",
             "x-langfuse-sdk-version": self._version,
@@ -56,8 +54,12 @@ class LangfuseClient:
 
     def post(self, **kwargs: Any) -> httpx.Response:
         """Post the `kwargs` to the API"""
-        url = self._remove_trailing_slash(self._base_url) + "/api/public/ingestion"
-        data = json.dumps(kwargs, cls=EventSerializer)
+        url = (
+            self._remove_trailing_slash(self._base_url) + "/api/public/ingestion-noauth"
+        )
+        data = json.dumps(
+            {"project_id": self._project_id, **kwargs}, cls=EventSerializer
+        )
         logger.debug("making request: %s to %s", data, url)
         headers = self.generate_headers()
         res = self._session.post(
@@ -68,6 +70,9 @@ class LangfuseClient:
             logger.debug("data uploaded successfully")
 
         return res
+
+    def close(self) -> None:
+        self._session.close()
 
     def _remove_trailing_slash(self, url: str) -> str:
         """Removes the trailing slash from a URL"""

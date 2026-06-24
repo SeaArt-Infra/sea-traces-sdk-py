@@ -30,15 +30,13 @@ def test_resolve_sealangfuse_credentials_success():
         assert body == {
             "api_key": "sa-test",
             "base_url": "https://gateway.example.com",
-            "project_id": "project-test",
         }
 
         return httpx.Response(
             200,
             json={
-                "publicKey": "pk-test",
-                "secretKey": "sk-test",
-                "baseUrl": "https://sealangfuse.example.com",
+                "project_id": "project-test",
+                "base_url": "https://sealangfuse.example.com",
             },
         )
 
@@ -47,13 +45,11 @@ def test_resolve_sealangfuse_credentials_success():
     credentials = resolve_sealangfuse_credentials(
         api_key="sa-test",
         base_url="https://gateway.example.com",
-        project_id="project-test",
         credentials_url="https://resolver.example.com/api",
         httpx_client=client,
     )
 
-    assert credentials.public_key == "pk-test"
-    assert credentials.secret_key == "sk-test"
+    assert credentials.project_id == "project-test"
     assert credentials.base_url == "https://sealangfuse.example.com"
     assert calls == 1
 
@@ -68,9 +64,8 @@ def test_resolve_sealangfuse_credentials_uses_cache():
         return httpx.Response(
             200,
             json={
-                "publicKey": "pk-cache",
-                "secretKey": "sk-cache",
-                "baseUrl": "https://cache.example.com",
+                "project_id": "project-cache",
+                "base_url": "https://cache.example.com",
             },
         )
 
@@ -79,14 +74,12 @@ def test_resolve_sealangfuse_credentials_uses_cache():
     first_credentials = resolve_sealangfuse_credentials(
         api_key="sa-cache",
         base_url="https://gateway.example.com",
-        project_id="project-cache",
         credentials_url="https://resolver.example.com/api",
         httpx_client=client,
     )
     second_credentials = resolve_sealangfuse_credentials(
         api_key="sa-cache",
         base_url="https://gateway.example.com",
-        project_id="project-cache",
         credentials_url="https://resolver.example.com/api",
         httpx_client=client,
     )
@@ -111,9 +104,8 @@ def test_resolve_sealangfuse_credentials_singleflight_for_concurrent_calls():
         return httpx.Response(
             200,
             json={
-                "publicKey": "pk-concurrent",
-                "secretKey": "sk-concurrent",
-                "baseUrl": "https://concurrent.example.com",
+                "project_id": "project-concurrent",
+                "base_url": "https://concurrent.example.com",
             },
         )
 
@@ -125,7 +117,6 @@ def test_resolve_sealangfuse_credentials_singleflight_for_concurrent_calls():
         return resolve_sealangfuse_credentials(
             api_key="sa-concurrent",
             base_url="https://gateway.example.com",
-            project_id="project-concurrent",
             credentials_url="https://resolver.example.com/api",
             httpx_client=client,
         )
@@ -143,7 +134,9 @@ def test_resolve_sealangfuse_credentials_singleflight_for_concurrent_calls():
         release_handler.set()
         credentials = [future.result(timeout=5) for future in futures]
 
-    assert all(credential.public_key == "pk-concurrent" for credential in credentials)
+    assert all(
+        credential.project_id == "project-concurrent" for credential in credentials
+    )
     assert calls == 1
 
 
@@ -152,8 +145,7 @@ def test_resolve_sealangfuse_credentials_rejects_missing_fields():
         return httpx.Response(
             200,
             json={
-                "publicKey": "pk-incomplete",
-                "secretKey": "sk-incomplete",
+                "project_id": "project-incomplete",
             },
         )
 
@@ -163,7 +155,6 @@ def test_resolve_sealangfuse_credentials_rejects_missing_fields():
         resolve_sealangfuse_credentials(
             api_key="sa-incomplete",
             base_url="https://gateway.example.com",
-            project_id="project-incomplete",
             credentials_url="https://resolver.example.com/api",
             httpx_client=client,
         )

@@ -42,9 +42,8 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
-            api_key="test-team-key",
-            base_url="https://mock-host.com",
             project_id="test-project-id",
+            base_url="https://mock-host.com",
             additional_headers=additional_headers,
             tracing_enabled=False,  # Disable tracing to avoid OTEL setup
         )
@@ -76,9 +75,8 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
-            api_key="test-team-key",
-            base_url="https://mock-host.com",
             project_id="test-project-id",
+            base_url="https://mock-host.com",
             httpx_client=custom_client,
             additional_headers=additional_headers,
             tracing_enabled=False,
@@ -107,9 +105,8 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
-            api_key="test-team-key",
-            base_url="https://mock-host.com",
             project_id="test-project-id",
+            base_url="https://mock-host.com",
             httpx_client=custom_client,
             additional_headers=None,  # No additional headers
             tracing_enabled=False,
@@ -131,9 +128,8 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
-            api_key="test-team-key",
-            base_url="https://mock-host.com",
             project_id="test-project-id",
+            base_url="https://mock-host.com",
             httpx_client=custom_client,
             tracing_enabled=False,
         )
@@ -147,9 +143,8 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
-            api_key="test-team-key",
-            base_url="https://mock-host.com",
             project_id="test-project-id",
+            base_url="https://mock-host.com",
             additional_headers=None,
             tracing_enabled=False,
         )
@@ -165,9 +160,8 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
-            api_key="test-team-key",
-            base_url="https://mock-host.com",
             project_id="test-project-id",
+            base_url="https://mock-host.com",
             additional_headers={},
             tracing_enabled=False,
         )
@@ -190,24 +184,17 @@ class TestAdditionalHeadersSimple:
         processor = LangfuseSpanProcessor(
             public_key="test-public-key",
             secret_key="test-secret-key",
+            project_id="test-project-id",
             base_url="https://mock-host.com",
             additional_headers=additional_headers,
         )
 
-        # Get the OTLP span exporter to check its headers
         exporter = processor.span_exporter
+        session_headers = exporter._client._session.headers
 
-        # Verify additional headers are in the exporter's headers
-        assert exporter._headers["X-Custom-Trace-Header"] == "trace-value"
-        assert exporter._headers["X-Override-Default"] == "override-value"
-
-        # Verify default headers are still present
-        assert "Authorization" in exporter._headers
-        assert "x-langfuse-sdk-name" in exporter._headers
-        assert "x-langfuse-public-key" in exporter._headers
-
-        # Check that our override worked
-        assert exporter._headers["X-Override-Default"] == "override-value"
+        assert session_headers["x-custom-trace-header"] == "trace-value"
+        assert session_headers["x-override-default"] == "override-value"
+        assert "authorization" not in session_headers
 
     def test_span_processor_none_additional_headers_works(self):
         """Test that span processor works with None additional headers."""
@@ -217,17 +204,15 @@ class TestAdditionalHeadersSimple:
         processor = LangfuseSpanProcessor(
             public_key="test-public-key",
             secret_key="test-secret-key",
+            project_id="test-project-id",
             base_url="https://mock-host.com",
             additional_headers=None,
         )
 
-        # Get the OTLP span exporter
         exporter = processor.span_exporter
 
-        # Verify default headers are present
-        assert "Authorization" in exporter._headers
-        assert "x-langfuse-sdk-name" in exporter._headers
-        assert "x-langfuse-public-key" in exporter._headers
+        assert exporter._client._project_id == "test-project-id"
+        assert "authorization" not in exporter._client._session.headers
 
     def test_span_processor_uses_custom_span_exporter_when_provided(self):
         """Test that a custom exporter bypasses the default OTLP exporter construction."""
@@ -238,6 +223,7 @@ class TestAdditionalHeadersSimple:
         processor = LangfuseSpanProcessor(
             public_key="test-public-key",
             secret_key="test-secret-key",
+            project_id="test-project-id",
             base_url="https://mock-host.com",
             additional_headers={"X-Custom-Trace-Header": "trace-value"},
             span_exporter=custom_exporter,
