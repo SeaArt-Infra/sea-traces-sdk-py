@@ -35,6 +35,27 @@ LANGFUSE_SECRET_KEY = "LANGFUSE_SECRET_KEY"
 Secret API key of Langfuse project
 """
 
+SEATRACES_PUBLIC_KEY = "SEATRACES_PUBLIC_KEY"
+"""
+.. envvar:: SEATRACES_PUBLIC_KEY
+
+Public API key for direct Sea Traces upload
+"""
+
+SEATRACES_SECRET_KEY = "SEATRACES_SECRET_KEY"
+"""
+.. envvar:: SEATRACES_SECRET_KEY
+
+Secret API key for direct Sea Traces upload
+"""
+
+SEATRACES_BASE_URL = "SEATRACES_BASE_URL"
+"""
+.. envvar:: SEATRACES_BASE_URL
+
+Base URL for direct Sea Traces upload.
+"""
+
 SEALANGFUSE_API_KEY = "SEALANGFUSE_API_KEY"
 """
 .. envvar:: SEALANGFUSE_API_KEY
@@ -42,11 +63,18 @@ SEALANGFUSE_API_KEY = "SEALANGFUSE_API_KEY"
 Sealangfuse API key used to resolve Langfuse project credentials.
 """
 
-SEA_TEAM_KEY = "SEA_TEAM_KEY"
+SEA_TRACES_API_KEY = "SEA_TRACES_API_KEY"
 """
-.. envvar:: SEA_TEAM_KEY
+.. envvar:: SEA_TRACES_API_KEY
 
-Sea Traces team key used to resolve Langfuse project credentials.
+Sea Traces API key used to resolve Langfuse project credentials.
+"""
+
+SEA_TRACES_PROJECT_ID = "SEA_TRACES_PROJECT_ID"
+"""
+.. envvar:: SEA_TRACES_PROJECT_ID
+
+Sea Traces project id used to resolve Langfuse project credentials.
 """
 
 SEALANGFUSE_CREDENTIALS_URL = "SEALANGFUSE_CREDENTIALS_URL"

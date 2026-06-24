@@ -53,7 +53,9 @@ from langfuse._client.constants import (
 )
 from langfuse._client.datasets import DatasetClient
 from langfuse._client.environment_variables import (
+    LANGFUSE_BASE_URL,
     LANGFUSE_DEBUG,
+    LANGFUSE_HOST,
     LANGFUSE_PUBLIC_KEY,
     LANGFUSE_RELEASE,
     LANGFUSE_SAMPLE_RATE,
@@ -61,9 +63,13 @@ from langfuse._client.environment_variables import (
     LANGFUSE_TIMEOUT,
     LANGFUSE_TRACING_ENABLED,
     LANGFUSE_TRACING_ENVIRONMENT,
-    SEA_TEAM_KEY,
+    SEA_TRACES_API_KEY,
     SEA_TRACES_BASE_URL,
+    SEA_TRACES_PROJECT_ID,
     SEALANGFUSE_CREDENTIALS_URL,
+    SEATRACES_BASE_URL,
+    SEATRACES_PUBLIC_KEY,
+    SEATRACES_SECRET_KEY,
 )
 from langfuse._client.propagation import (
     PropagatedExperimentAttributes,
@@ -174,11 +180,12 @@ class Langfuse:
         _otel_tracer: Internal LangfuseTracer instance managing OpenTelemetry components
 
     Parameters:
-        public_key (Optional[str]): Your Langfuse public API key. Can also be set via LANGFUSE_PUBLIC_KEY environment variable.
-        secret_key (Optional[str]): Your Langfuse secret API key. Can also be set via LANGFUSE_SECRET_KEY environment variable.
-        api_key (Optional[str]): Required Sea Traces team key. Can also be set via SEA_TEAM_KEY environment variable.
-        base_url (Optional[str]): Required Sea Traces API base URL. Can also be set via SEA_TRACES_BASE_URL environment variable.
-        host (Optional[str]): Deprecated. Ignored by Sea Traces initialization. Use base_url instead.
+        public_key (Optional[str]): Public API key for direct Sea Traces upload. Can also be set via SEATRACES_PUBLIC_KEY environment variable.
+        secret_key (Optional[str]): Secret API key for direct Sea Traces upload. Can also be set via SEATRACES_SECRET_KEY environment variable.
+        api_key (Optional[str]): Sea Traces API key for gateway credential resolution. Can also be set via SEA_TRACES_API_KEY environment variable.
+        base_url (Optional[str]): Sea Traces gateway URL for api_key/project_id auth, or Langfuse API URL when public_key/secret_key are provided. Can also be set via SEA_TRACES_BASE_URL for gateway auth.
+        project_id (Optional[str]): Sea Traces project id for gateway credential resolution. Can also be set via SEA_TRACES_PROJECT_ID environment variable.
+        host (Optional[str]): Deprecated. Direct-auth fallback when base_url and SEATRACES_BASE_URL are not set.
         timeout (Optional[int]): Timeout in seconds for API requests. Defaults to 5 seconds.
         httpx_client (Optional[httpx.Client]): Custom httpx client for making non-tracing HTTP requests. If not provided, a default client will be created.
         debug (bool): Enable debug logging. Defaults to False. Can also be set via LANGFUSE_DEBUG environment variable.
@@ -255,6 +262,7 @@ class Langfuse:
         secret_key: Optional[str] = None,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
+        project_id: Optional[str] = None,
         host: Optional[str] = None,
         timeout: Optional[int] = None,
         httpx_client: Optional[httpx.Client] = None,
@@ -290,50 +298,94 @@ class Langfuse:
 
         timeout = timeout or int(os.environ.get(LANGFUSE_TIMEOUT, 5))
 
+        public_key = _normalize_required_config(
+            public_key
+            or os.environ.get(SEATRACES_PUBLIC_KEY)
+            or os.environ.get(LANGFUSE_PUBLIC_KEY)
+        )
+        secret_key = _normalize_required_config(
+            secret_key
+            or os.environ.get(SEATRACES_SECRET_KEY)
+            or os.environ.get(LANGFUSE_SECRET_KEY)
+        )
+        direct_base_url = _normalize_required_config(
+            base_url
+            or os.environ.get(SEATRACES_BASE_URL)
+            or os.environ.get(LANGFUSE_BASE_URL)
+            or host
+            or os.environ.get(LANGFUSE_HOST)
+        )
         sea_traces_api_key = _normalize_required_config(
-            api_key or os.environ.get(SEA_TEAM_KEY)
+            api_key or os.environ.get(SEA_TRACES_API_KEY)
         )
         sea_traces_base_url = _normalize_required_config(
             base_url or os.environ.get(SEA_TRACES_BASE_URL)
         )
+        sea_traces_project_id = _normalize_required_config(
+            project_id or os.environ.get(SEA_TRACES_PROJECT_ID)
+        )
 
-        if sea_traces_api_key is None:
-            langfuse_logger.warning(
-                "Authentication error: Sea Traces client initialized without SEA_TEAM_KEY. "
-                "Client will be disabled. Provide an api_key parameter or set SEA_TEAM_KEY. "
-            )
-            self._otel_tracer = otel_trace_api.NoOpTracer()
-            return
+        has_direct_credentials = (
+            public_key is not None
+            and secret_key is not None
+            and direct_base_url is not None
+        )
 
-        if sea_traces_base_url is None:
-            langfuse_logger.warning(
-                "Authentication error: Sea Traces client initialized without SEA_TRACES_BASE_URL. "
-                "Client will be disabled. Provide a base_url parameter or set SEA_TRACES_BASE_URL. "
-            )
-            self._otel_tracer = otel_trace_api.NoOpTracer()
-            return
+        if has_direct_credentials:
+            resolved_base_url = direct_base_url
+        else:
+            if sea_traces_api_key is None:
+                langfuse_logger.warning(
+                    "Authentication error: Sea Traces client initialized without complete direct Sea Traces credentials "
+                    "or SEA_TRACES_API_KEY. Client will be disabled. Provide public_key, secret_key, and base_url "
+                    "for direct Sea Traces upload, or provide an api_key parameter or set SEA_TRACES_API_KEY for "
+                    "Sea Traces gateway authentication. "
+                )
+                self._otel_tracer = otel_trace_api.NoOpTracer()
+                return
 
-        resolved_base_url = sea_traces_base_url
-        public_key = public_key or os.environ.get(LANGFUSE_PUBLIC_KEY)
-        secret_key = secret_key or os.environ.get(LANGFUSE_SECRET_KEY)
+            if sea_traces_base_url is None:
+                langfuse_logger.warning(
+                    "Authentication error: Sea Traces client initialized without complete direct Sea Traces credentials "
+                    "or SEA_TRACES_BASE_URL. Client will be disabled. Provide public_key, secret_key, and base_url "
+                    "for direct Sea Traces upload, or provide a base_url parameter or set SEA_TRACES_BASE_URL for "
+                    "Sea Traces gateway authentication. "
+                )
+                self._otel_tracer = otel_trace_api.NoOpTracer()
+                return
 
-        if public_key is None or secret_key is None:
+            if sea_traces_project_id is None:
+                langfuse_logger.warning(
+                    "Authentication error: Sea Traces client initialized without complete direct Sea Traces credentials "
+                    "or SEA_TRACES_PROJECT_ID. Client will be disabled. Provide public_key, secret_key, and base_url "
+                    "for direct Sea Traces upload, or provide a project_id parameter or set SEA_TRACES_PROJECT_ID for "
+                    "Sea Traces gateway authentication. "
+                )
+                self._otel_tracer = otel_trace_api.NoOpTracer()
+                return
+
+            # 用户传入的 project_id 直接生效,省去远端 projects.get() 懒加载
+            self._project_id = sea_traces_project_id
+
             try:
                 credentials_url = os.environ.get(SEALANGFUSE_CREDENTIALS_URL) or (
                     build_sealangfuse_credentials_url(sea_traces_base_url)
                 )
                 credentials = resolve_sealangfuse_credentials(
                     api_key=sea_traces_api_key,
+                    base_url=sea_traces_base_url,
+                    project_id=sea_traces_project_id,
                     credentials_url=credentials_url,
                     timeout=timeout,
                     httpx_client=httpx_client,
                 )
                 public_key = public_key or credentials.public_key
                 secret_key = secret_key or credentials.secret_key
-                resolved_base_url = sea_traces_base_url
+                # 上报地址用鉴权响应返回的 baseUrl(真正的 langfuse-web 地址),而非入参网关地址
+                resolved_base_url = credentials.base_url
             except Exception as error:
                 langfuse_logger.warning(
-                    "Authentication error: Failed to resolve Sealangfuse API key. Client will be disabled. "
+                    "Authentication error: Failed to resolve Sea Traces API key. Client will be disabled. "
                     f"Error: {error}"
                 )
                 self._otel_tracer = otel_trace_api.NoOpTracer()
