@@ -36,6 +36,9 @@ class TestPropagateAttributesBase(TestOTelBase):
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="http://test-host",
+            api_key="test-team-key",
+            base_url="http://test-host",
+            project_id="test-project-id",
             tracing_enabled=True,
             tracer_provider=tracer_provider,  # Pass the test provider explicitly
         )

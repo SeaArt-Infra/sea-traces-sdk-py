@@ -18,6 +18,14 @@ from langfuse.langchain import CallbackHandler
 callback_handler_module = importlib.import_module("langfuse.langchain.CallbackHandler")
 
 
+@pytest.fixture(autouse=True)
+def _sea_traces_env(monkeypatch):
+    """Provide required Sea Traces credentials so get_client() rebuilds an enabled client."""
+    monkeypatch.setenv("SEA_TRACES_API_KEY", "test-team-key")
+    monkeypatch.setenv("SEA_TRACES_BASE_URL", "http://test-host")
+    monkeypatch.setenv("SEA_TRACES_PROJECT_ID", "test-project-id")
+
+
 def _assert_parent_child(parent_span, child_span) -> None:
     assert child_span.parent is not None
     assert child_span.parent.span_id == parent_span.context.span_id

@@ -34,6 +34,9 @@ def test_get_client_preserves_all_settings(monkeypatch):
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-comprehensive-default")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-comprehensive-default")
     monkeypatch.setenv("LANGFUSE_BASE_URL", "http://localhost:3000")
+    monkeypatch.setenv("SEA_TRACES_API_KEY", "test-team-key")
+    monkeypatch.setenv("SEA_TRACES_BASE_URL", "http://test-host")
+    monkeypatch.setenv("SEA_TRACES_PROJECT_ID", "test-project-id")
 
     def should_export(span):
         return span.name != "drop"
@@ -43,6 +46,9 @@ def test_get_client_preserves_all_settings(monkeypatch):
     settings = {
         "public_key": "pk-comprehensive",
         "secret_key": "sk-comprehensive",
+        "api_key": "test-team-key",
+        "base_url": "http://test-host",
+        "project_id": "test-project-id",
         "environment": "test-env",
         "release": "v1.2.3",
         "timeout": 30,
@@ -71,8 +77,11 @@ def test_get_client_preserves_all_settings(monkeypatch):
     original_client.shutdown()
 
 
-def test_get_client_multiple_clients_preserve_different_settings():
+def test_get_client_multiple_clients_preserve_different_settings(monkeypatch):
     """Test that get_client() preserves different settings for multiple clients."""
+    monkeypatch.setenv("SEA_TRACES_API_KEY", "test-team-key")
+    monkeypatch.setenv("SEA_TRACES_BASE_URL", "http://test-host")
+    monkeypatch.setenv("SEA_TRACES_PROJECT_ID", "test-project-id")
 
     def should_export_a(span):
         return span.name.startswith("a")
@@ -87,6 +96,9 @@ def test_get_client_multiple_clients_preserve_different_settings():
     settings_a = {
         "public_key": "pk-comprehensive-a",
         "secret_key": "sk-comprehensive-a",
+        "api_key": "test-team-key",
+        "base_url": "http://test-host",
+        "project_id": "test-project-id",
         "environment": "env-a",
         "release": "release-a",
         "timeout": 10,
@@ -99,6 +111,9 @@ def test_get_client_multiple_clients_preserve_different_settings():
     settings_b = {
         "public_key": "pk-comprehensive-b",
         "secret_key": "sk-comprehensive-b",
+        "api_key": "test-team-key",
+        "base_url": "http://test-host",
+        "project_id": "test-project-id",
         "environment": "env-b",
         "release": "release-b",
         "timeout": 20,

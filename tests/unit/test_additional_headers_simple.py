@@ -42,6 +42,9 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
+            api_key="test-team-key",
+            base_url="https://mock-host.com",
+            project_id="test-project-id",
             additional_headers=additional_headers,
             tracing_enabled=False,  # Disable tracing to avoid OTEL setup
         )
@@ -73,6 +76,9 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
+            api_key="test-team-key",
+            base_url="https://mock-host.com",
+            project_id="test-project-id",
             httpx_client=custom_client,
             additional_headers=additional_headers,
             tracing_enabled=False,
@@ -101,6 +107,9 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
+            api_key="test-team-key",
+            base_url="https://mock-host.com",
+            project_id="test-project-id",
             httpx_client=custom_client,
             additional_headers=None,  # No additional headers
             tracing_enabled=False,
@@ -122,6 +131,9 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
+            api_key="test-team-key",
+            base_url="https://mock-host.com",
+            project_id="test-project-id",
             httpx_client=custom_client,
             tracing_enabled=False,
         )
@@ -135,6 +147,9 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
+            api_key="test-team-key",
+            base_url="https://mock-host.com",
+            project_id="test-project-id",
             additional_headers=None,
             tracing_enabled=False,
         )
@@ -150,6 +165,9 @@ class TestAdditionalHeadersSimple:
             public_key="test-public-key",
             secret_key="test-secret-key",
             host="https://mock-host.com",
+            api_key="test-team-key",
+            base_url="https://mock-host.com",
+            project_id="test-project-id",
             additional_headers={},
             tracing_enabled=False,
         )

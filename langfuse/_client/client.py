@@ -379,8 +379,8 @@ class Langfuse:
                     timeout=timeout,
                     httpx_client=httpx_client,
                 )
-                public_key = public_key or credentials.public_key
-                secret_key = secret_key or credentials.secret_key
+                public_key = credentials.public_key
+                secret_key = credentials.secret_key
                 # 上报地址用鉴权响应返回的 baseUrl(真正的 langfuse-web 地址),而非入参网关地址
                 resolved_base_url = credentials.base_url
             except Exception as error:

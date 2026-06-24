@@ -481,6 +481,33 @@ class TestClientInitialization:
         )
         assert client._project_id == "project-test-id"
 
+    def test_gateway_credentials_override_incomplete_direct_credentials(
+        self, cleanup_env_vars, monkeypatch
+    ):
+        """Test gateway auth does not mix stale direct credentials with resolved ones."""
+        os.environ["SEATRACES_PUBLIC_KEY"] = "pk-stale-direct"
+        os.environ["SEA_TRACES_API_KEY"] = "team-test-key"
+        os.environ["SEA_TRACES_BASE_URL"] = "https://sea-traces.example.com"
+        os.environ["SEA_TRACES_PROJECT_ID"] = "project-test-id"
+
+        def resolve_credentials(**kwargs):
+            return SealangfuseCredentials(
+                public_key="pk-resolved-team",
+                secret_key="sk-resolved-team",
+                base_url="https://resolved-team.example.com",
+            )
+
+        monkeypatch.setattr(
+            "langfuse._client.client.resolve_sealangfuse_credentials",
+            resolve_credentials,
+        )
+
+        client = Langfuse()
+
+        assert client.api._client_wrapper._username == "pk-resolved-team"
+        assert client.api._client_wrapper._password == "sk-resolved-team"
+        assert client._base_url == "https://resolved-team.example.com"
+
     def test_sea_team_key_takes_precedence_over_legacy_api_key_env(
         self, cleanup_env_vars, monkeypatch
     ):

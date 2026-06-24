@@ -1,3 +1,4 @@
+import json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -24,7 +25,13 @@ def test_resolve_sealangfuse_credentials_success():
     def handler(request):
         nonlocal calls
         calls += 1
-        assert request.url.params["key"] == "sa-test"
+        assert request.method == "POST"
+        body = json.loads(request.content)
+        assert body == {
+            "api_key": "sa-test",
+            "base_url": "https://gateway.example.com",
+            "project_id": "project-test",
+        }
 
         return httpx.Response(
             200,
@@ -32,7 +39,6 @@ def test_resolve_sealangfuse_credentials_success():
                 "publicKey": "pk-test",
                 "secretKey": "sk-test",
                 "baseUrl": "https://sealangfuse.example.com",
-                "status": "ACTIVE",
             },
         )
 
@@ -40,6 +46,8 @@ def test_resolve_sealangfuse_credentials_success():
 
     credentials = resolve_sealangfuse_credentials(
         api_key="sa-test",
+        base_url="https://gateway.example.com",
+        project_id="project-test",
         credentials_url="https://resolver.example.com/api",
         httpx_client=client,
     )
@@ -63,7 +71,6 @@ def test_resolve_sealangfuse_credentials_uses_cache():
                 "publicKey": "pk-cache",
                 "secretKey": "sk-cache",
                 "baseUrl": "https://cache.example.com",
-                "status": "ACTIVE",
             },
         )
 
@@ -71,11 +78,15 @@ def test_resolve_sealangfuse_credentials_uses_cache():
 
     first_credentials = resolve_sealangfuse_credentials(
         api_key="sa-cache",
+        base_url="https://gateway.example.com",
+        project_id="project-cache",
         credentials_url="https://resolver.example.com/api",
         httpx_client=client,
     )
     second_credentials = resolve_sealangfuse_credentials(
         api_key="sa-cache",
+        base_url="https://gateway.example.com",
+        project_id="project-cache",
         credentials_url="https://resolver.example.com/api",
         httpx_client=client,
     )
@@ -103,7 +114,6 @@ def test_resolve_sealangfuse_credentials_singleflight_for_concurrent_calls():
                 "publicKey": "pk-concurrent",
                 "secretKey": "sk-concurrent",
                 "baseUrl": "https://concurrent.example.com",
-                "status": "ACTIVE",
             },
         )
 
@@ -114,6 +124,8 @@ def test_resolve_sealangfuse_credentials_singleflight_for_concurrent_calls():
         start_barrier.wait(timeout=5)
         return resolve_sealangfuse_credentials(
             api_key="sa-concurrent",
+            base_url="https://gateway.example.com",
+            project_id="project-concurrent",
             credentials_url="https://resolver.example.com/api",
             httpx_client=client,
         )
@@ -135,15 +147,13 @@ def test_resolve_sealangfuse_credentials_singleflight_for_concurrent_calls():
     assert calls == 1
 
 
-def test_resolve_sealangfuse_credentials_rejects_inactive_key():
+def test_resolve_sealangfuse_credentials_rejects_missing_fields():
     def handler(request):
         return httpx.Response(
             200,
             json={
-                "publicKey": "pk-inactive",
-                "secretKey": "sk-inactive",
-                "baseUrl": "https://inactive.example.com",
-                "status": "DISABLED",
+                "publicKey": "pk-incomplete",
+                "secretKey": "sk-incomplete",
             },
         )
 
@@ -151,7 +161,9 @@ def test_resolve_sealangfuse_credentials_rejects_inactive_key():
 
     with pytest.raises(RuntimeError):
         resolve_sealangfuse_credentials(
-            api_key="sa-inactive",
+            api_key="sa-incomplete",
+            base_url="https://gateway.example.com",
+            project_id="project-incomplete",
             credentials_url="https://resolver.example.com/api",
             httpx_client=client,
         )

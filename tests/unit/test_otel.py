@@ -128,6 +128,8 @@ class TestOTelBase:
             public_key="test-public-key",
             secret_key="test-secret-key",
             base_url="http://test-host",
+            api_key="test-team-key",
+            project_id="test-project-id",
             tracing_enabled=True,
         )
 
@@ -152,6 +154,8 @@ class TestOTelBase:
                 public_key="test-public-key",
                 secret_key="test-secret-key",
                 base_url="http://test-host",
+                api_key="test-team-key",
+                project_id="test-project-id",
                 tracing_enabled=True,
                 **kwargs,
             )
@@ -1426,6 +1430,8 @@ class TestAdvancedSpans(TestOTelBase):
             public_key="test-public-key",
             secret_key="test-secret-key",
             base_url="http://test-host",
+            api_key="test-team-key",
+            project_id="test-project-id",
             tracing_enabled=True,
             sample_rate=0,  # No sampling
         )
@@ -1476,6 +1482,8 @@ class TestAdvancedSpans(TestOTelBase):
             public_key="test-public-key",
             secret_key="test-secret-key",
             base_url="http://test-host",
+            api_key="test-team-key",
+            project_id="test-project-id",
             tracing_enabled=False,
         )
 
@@ -2057,11 +2065,19 @@ class TestMultiProjectSetup(TestOTelBase):
 
         # Initialize the two clients
         langfuse_project1 = Langfuse(
-            public_key=project1_key, secret_key="secret1", base_url="http://test-host"
+            public_key=project1_key,
+            secret_key="secret1",
+            base_url="http://test-host",
+            api_key="test-team-key",
+            project_id="test-project-id",
         )
 
         langfuse_project2 = Langfuse(
-            public_key=project2_key, secret_key="secret2", base_url="http://test-host"
+            public_key=project2_key,
+            secret_key="secret2",
+            base_url="http://test-host",
+            api_key="test-team-key",
+            project_id="test-project-id",
         )
 
         # Return the setup
@@ -2470,6 +2486,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
             public_key=instrumentation_filtering_setup["test_key"],
             secret_key="test-secret-key",
             base_url="http://localhost:3000",
+            api_key="test-team-key",
+            project_id="test-project-id",
         )
 
         tracer_provider = instrumentation_filtering_setup["test_tracer_provider"]
@@ -2496,6 +2514,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
             public_key=instrumentation_filtering_setup["test_key"],
             secret_key="test-secret-key",
             base_url="http://localhost:3000",
+            api_key="test-team-key",
+            project_id="test-project-id",
         )
 
         tracer_provider = instrumentation_filtering_setup["test_tracer_provider"]
@@ -2522,6 +2542,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
             public_key=instrumentation_filtering_setup["test_key"],
             secret_key="test-secret-key",
             base_url="http://localhost:3000",
+            api_key="test-team-key",
+            project_id="test-project-id",
         )
 
         tracer_provider = instrumentation_filtering_setup["test_tracer_provider"]
@@ -2547,6 +2569,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
             public_key=instrumentation_filtering_setup["test_key"],
             secret_key="test-secret-key",
             base_url="http://localhost:3000",
+            api_key="test-team-key",
+            project_id="test-project-id",
         )
 
         tracer_provider = instrumentation_filtering_setup["test_tracer_provider"]
@@ -2570,6 +2594,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
             public_key=instrumentation_filtering_setup["test_key"],
             secret_key="test-secret-key",
             base_url="http://localhost:3000",
+            api_key="test-team-key",
+            project_id="test-project-id",
             should_export_span=lambda span: span.name.startswith("keep-"),
         )
 
@@ -2601,6 +2627,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
             public_key=instrumentation_filtering_setup["test_key"],
             secret_key="test-secret-key",
             base_url="http://localhost:3000",
+            api_key="test-team-key",
+            project_id="test-project-id",
             should_export_span=lambda span: (
                 is_default_export_span(span)
                 or (
@@ -2642,6 +2670,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
                 public_key=instrumentation_filtering_setup["test_key"],
                 secret_key="test-secret-key",
                 base_url="http://localhost:3000",
+                api_key="test-team-key",
+                project_id="test-project-id",
                 blocked_instrumentation_scopes=["my-framework.worker"],
                 should_export_span=lambda span: True,
             )
@@ -2673,6 +2703,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
             public_key=instrumentation_filtering_setup["test_key"],
             secret_key="test-secret-key",
             base_url="http://localhost:3000",
+            api_key="test-team-key",
+            project_id="test-project-id",
             should_export_span=None,
         )
 
@@ -2708,6 +2740,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
             public_key=instrumentation_filtering_setup["test_key"],
             secret_key="test-secret-key",
             base_url="http://localhost:3000",
+            api_key="test-team-key",
+            project_id="test-project-id",
             should_export_span=_failing_filter,
         )
 
@@ -2741,6 +2775,8 @@ class TestInstrumentationScopeFiltering(TestOTelBase):
                 public_key=instrumentation_filtering_setup["test_key"],
                 secret_key="test-secret-key",
                 base_url="http://localhost:3000",
+                api_key="test-team-key",
+                project_id="test-project-id",
                 blocked_instrumentation_scopes=["my.blocked.scope"],
                 should_export_span=lambda span: True,
             )
@@ -3368,6 +3404,8 @@ class TestOtelIdGeneration(TestOTelBase):
             public_key="test-public-key",
             secret_key="test-secret-key",
             base_url="http://test-host",
+            api_key="test-team-key",
+            project_id="test-project-id",
             tracing_enabled=False,
         )
 

@@ -126,7 +126,9 @@ def langfuse_memory_client(
     client = Langfuse(
         public_key="test-public-key",
         secret_key="test-secret-key",
+        api_key="test-team-key",
         base_url="http://test-host",
+        project_id="test-project-id",
         tracing_enabled=True,
         tracer_provider=tracer_provider,
     )

@@ -13,7 +13,13 @@ logging.ERROR	40
 
 
 def test_default_langfuse():
-    Langfuse()
+    Langfuse(
+        public_key="test-public-key",
+        secret_key="test-secret-key",
+        api_key="test-team-key",
+        base_url="http://test-host",
+        project_id="test-project-id",
+    )
 
     assert langfuse_logger.level == 30
 
@@ -21,7 +27,13 @@ def test_default_langfuse():
 def test_via_env():
     os.environ["LANGFUSE_DEBUG"] = "True"
 
-    Langfuse()
+    Langfuse(
+        public_key="test-public-key",
+        secret_key="test-secret-key",
+        api_key="test-team-key",
+        base_url="http://test-host",
+        project_id="test-project-id",
+    )
 
     assert langfuse_logger.level == 10
 
@@ -29,7 +41,14 @@ def test_via_env():
 
 
 def test_debug_langfuse():
-    Langfuse(debug=True)
+    Langfuse(
+        debug=True,
+        public_key="test-public-key",
+        secret_key="test-secret-key",
+        api_key="test-team-key",
+        base_url="http://test-host",
+        project_id="test-project-id",
+    )
     assert langfuse_logger.level == 10
 
     # Reset

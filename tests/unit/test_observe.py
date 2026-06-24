@@ -29,6 +29,14 @@ class SpanRecorder:
         return self
 
 
+@pytest.fixture(autouse=True)
+def _sea_traces_env(monkeypatch):
+    """Provide required Sea Traces credentials so get_client() rebuilds an enabled client."""
+    monkeypatch.setenv("SEA_TRACES_API_KEY", "test-team-key")
+    monkeypatch.setenv("SEA_TRACES_BASE_URL", "http://test-host")
+    monkeypatch.setenv("SEA_TRACES_PROJECT_ID", "test-project-id")
+
+
 def _finished_spans_by_name(memory_exporter: Any, name: str) -> list[Any]:
     return [span for span in memory_exporter.get_finished_spans() if span.name == name]
 
