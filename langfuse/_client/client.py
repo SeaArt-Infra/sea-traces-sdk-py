@@ -380,7 +380,7 @@ class Langfuse:
                 self._project_id = credentials.project_id
                 public_key = credentials.project_id
                 secret_key = ""
-                # 上报地址用鉴权响应返回的 base_url(真正的 langfuse-web 地址),而非入参网关地址
+                # Use the resolved upload URL instead of the gateway URL.
                 resolved_base_url = credentials.base_url
             except Exception as error:
                 langfuse_logger.warning(

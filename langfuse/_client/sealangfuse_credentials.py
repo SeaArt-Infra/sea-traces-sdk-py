@@ -8,7 +8,7 @@ import httpx
 
 from langfuse.logger import langfuse_logger
 
-# 鉴权端点路径,拼接在网关 base_url 之后
+# Authentication endpoint appended to the gateway base URL.
 SEALANGFUSE_CREDENTIALS_PATH = "/hub/sea-traces-api-key"
 
 
@@ -18,7 +18,7 @@ class SealangfuseCredentials:
     base_url: str
 
 
-# 缓存 key 为 (api_key, credentials_url),避免重复请求网关鉴权接口
+# Cache key is (api_key, credentials_url) to avoid repeated resolver requests.
 _CredentialsCacheKey = Tuple[str, str]
 _credentials_cache: Dict[_CredentialsCacheKey, SealangfuseCredentials] = {}
 _credentials_cache_lock = Lock()
@@ -47,10 +47,11 @@ def resolve_sealangfuse_credentials(
 ) -> SealangfuseCredentials:
     """Resolve a Sea Traces API key into a noauth ingestion target.
 
-    向网关 ``POST {base_url}/hub/sea-traces-api-key`` 发起鉴权请求,JSON body 携带
-    ``api_key`` / ``base_url`` 两个字段,鉴权通过后返回项目 ID 和真正的上报地址。
+    Resolve credentials with ``POST {base_url}/hub/sea-traces-api-key``.
+    The JSON body contains ``api_key`` and ``base_url``; the gateway returns a
+    project ID and the resolved upload URL.
     """
-    # credentials_url 允许通过环境变量显式覆盖,默认用入参网关 base_url 拼接
+    # credentials_url can override the default URL derived from base_url.
     resolved_credentials_url = credentials_url or build_sealangfuse_credentials_url(
         base_url
     )
