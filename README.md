@@ -235,3 +235,19 @@ export SEATRACES_BASE_URL="https://your-sea-traces-ingestion.example.com"
 - 不要在日志里打印完整 API Key。
 - 测试环境和生产环境都显式配置 `SEA_TRACES_BASE_URL`。
 - 容器或函数计算环境中，在启动时注入环境变量，避免在代码中硬编码。
+
+## Unified gateway API
+
+Use `SeaTracesAPI` with a gateway URL and token. Every request includes
+`Authorization: Bearer <token>`.
+
+```python
+from sea_traces import SeaTracesAPI
+
+with SeaTracesAPI("https://gateway.example.com", "token") as api:
+    projects = api.list_projects()
+    project = api.create_project("checkout")
+    api.update_project(project["id"], "checkout-v2")
+    api.ingest(project["id"], [{"type": "trace-create", "body": {"id": "trace-1", "name": "checkout"}}])
+    traces = api.list_traces(project["id"], trace_id="trace-1")
+```

@@ -3,6 +3,7 @@
 import langfuse as _langfuse
 from langfuse import *  # noqa: F403
 from langfuse._client import client as _client_module
+from .api import SeaTracesAPI
 
 SeaTraces = _client_module.Langfuse
 
@@ -11,4 +12,5 @@ __version__ = _langfuse.__version__
 __all__ = [
     *_langfuse.__all__,
     "SeaTraces",
+    "SeaTracesAPI",
 ]
