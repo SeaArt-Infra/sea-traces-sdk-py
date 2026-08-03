@@ -1972,7 +1972,7 @@ docs = [
 requires-dist = [
     { name = "backoff", specifier = ">=1.10.0" },
     { name = "httpx", specifier = ">=0.15.4,<1.0" },
-    { name = "opentelemetry-api", specifier = ">=1.42.1,<2" },
+    { name = "opentelemetry-api", specifier = ">=1.44.0,<2" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.33.1,<2" },
     { name = "opentelemetry-sdk", specifier = ">=1.44.0,<2" },
     { name = "packaging", specifier = ">=23.2,<27.0" },
