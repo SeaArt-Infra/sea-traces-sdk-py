@@ -24,7 +24,7 @@ This repository contains the Langfuse Python SDK.
 - `tests/e2e/`: real Langfuse-server tests
 - `tests/live_provider/`: live OpenAI / LangChain provider tests
 - `tests/support/`: shared helpers for e2e tests
-- `scripts/select_e2e_shard.py`: CI shard selector for `tests/e2e`
+- `scripts/select_e2e_shard.py`: shard selector for `tests/e2e`
 - `scripts/codex/`: Codex cloud/worktree bootstrap and shared quick checks
 
 ## Working Style
@@ -80,7 +80,7 @@ Minimum verification matrix:
 | Shutdown, flushing, worker-thread, or OTEL-heavy change | targeted resource-manager/OTEL tests plus affected integration tests when relevant |
 | OpenAI or LangChain instrumentation | targeted unit tests using exporter-local assertions; add e2e/live-provider coverage only when unit tests cannot cover behavior |
 | Generated API client or public API contract | upstream Fern/OpenAPI regeneration path plus targeted SDK serialization/deserialization tests |
-| CI, sharding, or bootstrap | relevant script test plus CI workflow review against this file's CI contract |
+| Sharding or bootstrap | relevant script test and review of the affected workflow |
 
 ## Test Topology
 
@@ -96,34 +96,21 @@ Minimum verification matrix:
 - Prefer bounded polling helpers in `tests/support/` over raw `sleep()` calls.
 - Use `serial_e2e` only for tests that are unsafe under shared-server concurrency.
 - New e2e files should be named `tests/e2e/test_*.py`.
-- Do not add `e2e_core` / `e2e_data` markers. CI shards `tests/e2e` mechanically with `scripts/select_e2e_shard.py`.
+- Do not add `e2e_core` / `e2e_data` markers. Use `scripts/select_e2e_shard.py` for mechanical sharding when needed.
+- When changing the e2e split, update the shard selector rather than marker routing in `tests/conftest.py`, include new e2e test files, and keep `serial_e2e` as the only scheduling-specific pytest marker.
 
 ### `tests/live_provider`
 
-- This suite uses real provider calls and always runs as one dedicated CI suite.
-- Do not split or shard `tests/live_provider` into separate smoke and extended jobs unless the team explicitly changes that policy.
+- This suite uses real provider calls and should be run separately.
+- Do not split `tests/live_provider` into separate smoke and extended suites unless the team explicitly changes that policy.
 - Keep assertions focused on stable provider-facing behavior rather than brittle observation counts.
 
-## CI Contract
+## Code Checks
 
-The main CI workflow currently runs:
-- linting on Python 3.13
-- mypy on Python 3.13
-- `tests/unit` on a Python 3.10-3.14 matrix
-- `tests/e2e` in 2 mechanical shards plus a serial subset inside each shard
-- `tests/live_provider` as one always-on suite
-- PR title validation for Conventional Commits
-
-If you change the e2e split:
-
-- update `scripts/select_e2e_shard.py`, not marker routing in `tests/conftest.py`
-- make sure new `tests/e2e/test_*.py` files are automatically covered
-- keep `serial_e2e` as the only scheduling-specific pytest marker
-
-If you change CI bootstrap:
-
-- preserve the `LANGFUSE_INIT_*` startup path for the Langfuse server unless there is a strong reason to change it
-- preserve `cancel-in-progress: true`
+The main SDK test and lint workflow is not run by GitHub Actions. The team
+performs code checks and merges through its own process. The commands above
+remain available for local verification. PR title validation and other
+independent GitHub Actions workflows are configured separately.
 
 ## Repo Rules
 

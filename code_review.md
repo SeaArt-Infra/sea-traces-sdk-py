@@ -26,7 +26,7 @@ Use this checklist for `/review`, PR review, or self-review before handoff.
 
 - Unit tests must not require a running Langfuse server.
 - E2E tests should use bounded polling helpers from `tests/support/`, not raw `sleep()`.
-- New e2e files must be named `tests/e2e/test_*.py` so mechanical CI sharding includes them.
+- New e2e files must be named `tests/e2e/test_*.py` so mechanical sharding includes them.
 - Use `serial_e2e` only for tests that are unsafe with shared-server concurrency.
 - Live-provider tests should assert stable provider-facing behavior, not exact observation counts unless counts are the behavior under test.
 
