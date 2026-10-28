@@ -109,7 +109,7 @@ wheels = [
 
 [[package]]
 name = "autoevals"
-version = "0.4.0"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chevron" },
@@ -117,9 +117,9 @@ dependencies = [
     { name = "polyleven" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e7/15/ce2ad68158fe554bbf2c1c4a39c4d0a3fbfe458b7b1cd74fc979c7739b82/autoevals-0.4.0.tar.gz", hash = "sha256:9a88be6f18b9109bed121a35839c76041efa55881126ed477447834ece57a3c7", size = 68128, upload-time = "2026-10-07T22:21:56.162Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/a5/2d6f51f81ff375cfb7596ce6e36c3335025a28befd38378153388dd6cdfd/autoevals-0.4.1.tar.gz", hash = "sha256:2285d46a1e6fa20cfb7db412e4b7b1e16008f7f22fef8108fcef46b6b43082f7", size = 68758, upload-time = "2026-10-21T01:36:39.299Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/5d/e0ac3b6d44390de3824f4acc578721771d2aef7db22bed85fda1fb2065b8/autoevals-0.4.0-py3-none-any.whl", hash = "sha256:50430c331c6c4959253f0972913371b7b2510e38250812704835fb0797a434a7", size = 74863, upload-time = "2026-10-07T22:21:54.824Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/50/532ead5704aebb873a4697f6208a84edbe5f0d43114b516348e8d2c68b46/autoevals-0.4.1-py3-none-any.whl", hash = "sha256:8daa690bc717a7d085a6b9e971e3b71c03d1f6b9bf259c0daea7781d0173a45f", size = 75551, upload-time = "2026-10-21T01:36:37.739Z" },
 ]
 
 [[package]]
